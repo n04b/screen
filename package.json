@@ -12,6 +12,7 @@
     "bitmap-manipulation": "2.0.0",
     "body-parser": "1.18.3",
     "express": "4.16.4",
+    "lodash": "^4.17.11",
     "mqtt": "2.18.8"
   }
 }

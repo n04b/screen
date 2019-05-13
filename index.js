@@ -1,26 +1,31 @@
+const userConfig = require("./config.json");
 const mqtt = require("mqtt");
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
-const bitmapManipulation = require("bitmap-manipulation");
+
+const Screen = require("./screen");
+const cookBitmap = require("./helpers/cookBitmap");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const config = {
-  appDebug: true,
+const defaultConfig = {
+  appDebug: false,
   appPort: 1337,
-  screenName: "ScreenOne",
-  screenWidth: 80,
-  screenHeight: 60,
-  postTimeout: 10, // in ms?
+  screenName: "screen",
+  screenWidth: 800,
+  screenHeight: 600,
+  postTimeout: 1000, // in ms
   mqttEnabled: true,
-  mqttHost: "m24.cloudmqtt.com",
-  mqttPort: 15933, // 1883
-  mqttLogin: "ejzxcata",
-  mqttPass: "QKJzdGmqYXsv",
-  mqttRootTopic: "/ScreenOne"
+  mqttHost: "localhost",
+  mqttPort: 1883, // 1883 15933
+  mqttLogin: "",
+  mqttPass: "",
+  mqttRootTopic: "/screen"
 };
+
+const config = { ...defaultConfig, ...userConfig };
 
 process.argv.forEach((item, index, array) => {
   if (/^[^=]*=[^=]*$/.test(item)) {
@@ -45,111 +50,6 @@ process.argv.forEach((item, index, array) => {
 
 if (config.appDebug) {
   console.log("> config:", config);
-}
-
-class Screen {
-  constructor(config) {
-    this.config = config;
-    this._log = [];
-    this._canvas = new bitmapManipulation.canvas.RGB(
-      config.screenWidth,
-      config.screenHeight,
-      1
-    );
-    this._bitmap = new bitmapManipulation.Bitmap(this._canvas);
-  }
-
-  get log(){
-    return this._log;
-  }
-
-  get bitmap() {
-    return this._bitmap.data();
-  }
-
-  getPixelColor(x, y) {
-    //???
-    return this._bitmap.getPixel(x, y);
-  }
-
-  resetCanvas() {
-    //...
-  }
-
-  writeToLog(ip) {
-    this._log = [...this._log, { ip, date: new Date() }];
-  }
-
-  parseColor(color) {
-    return color.match(/.{1,2}/g).map(item => parseInt(item, 16));
-  }
-
-  setDots(dots) {
-    //???
-  }
-
-  setDot(x, y, color, ip) {
-    if (this.validateDot(x, y, color) && this.validateTimeout(ip)) {
-      this._bitmap.setPixel(x, y, this.parseColor(color));
-      this.writeToLog(ip);
-
-      if (config.appDebug) {
-        console.log("> bitmap:", this._bitmap.data());
-        console.log("> getPixel:", this.getPixelColor(x, y));
-      }
-
-      return { x, y, color };
-    } else {
-      return null;
-    }
-  }
-
-  validateDot(x, y, color) {
-    if (
-      !Number.isInteger(x) ||
-      !Number.isInteger(y) ||
-      x < 0 ||
-      x >= this.config.screenWidth || // max x value
-      y < 0 ||
-      y >= this.config.screenHeight || // max x value
-      !/^([A-Fa-f0-9]{6})$/.test(color)
-    ) {
-      return false;
-    }
-
-    return true;
-  }
-
-  validateTimeout(ip) {
-    if (this.config.postTimeout === 0) {
-      return true;
-    }
-
-    const userEvents = this.log.filter(item => item.ip === ip);
-    const curretDate = new Date();
-
-    if (userEvents.length === 0) {
-      return true;
-    }
-
-    userEvents.sort((a, b) => {
-      if (a.date < b.date) {
-        return 1;
-      }
-      if (a.date > b.date) {
-        return -1;
-      }
-      return 0;
-    });
-
-    const delta = curretDate.getTime() - userEvents[0].date.getTime();
-
-    if (delta < this.config.postTimeout) {
-      return false;
-    }
-
-    return true;
-  }
 }
 
 const screen = new Screen(config);
@@ -198,7 +98,12 @@ app.post("/dots", (req, res) => {
   const { x, y, color } = req.body;
   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
 
-  const setDotResult = screen.setDot(x, y, color, ip);
+  let setDotResult;
+  if (Array.isArray(req.body)) {
+    setDotResult = screen.setDots(req.body);
+  } else {
+    setDotResult = screen.setDot(x, y, color, ip);
+  }
 
   if (setDotResult) {
     res.send({ status: "ok", data: setDotResult });
@@ -209,9 +114,18 @@ app.post("/dots", (req, res) => {
         `${config.mqttRootTopic}/setDot`,
         JSON.stringify(setDotResult)
       );
+      mqttClient.publish(`${config.mqttRootTopic}/setBitmap`, screen.bitmap);
+
       mqttClient.publish(
-        `${config.mqttRootTopic}/setBitmap`,
-        screen.bitmap
+        `${config.mqttRootTopic}/setBitmapAdapted`,
+        cookBitmap(
+          screen.bitmap,
+          8,
+          3,
+          config.screenWidth,
+          config.screenHeight,
+          [2, 3, 0, 1]
+        )
       );
     }
   } else {
