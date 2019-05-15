@@ -3,6 +3,7 @@ const mqtt = require("mqtt");
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
+const { StringDecoder } = require("string_decoder");
 
 const Screen = require("./screen");
 const cookBitmap = require("./helpers/cookBitmap");
@@ -10,9 +11,12 @@ const cookBitmap = require("./helpers/cookBitmap");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+let mqttClient;
+const utf8Decoder = new StringDecoder("utf8");
+
 const defaultConfig = {
   appDebug: false,
-  appPort: 1337,
+  appPort: 31337,
   screenName: "screen",
   screenWidth: 800,
   screenHeight: 600,
@@ -54,8 +58,6 @@ if (config.appDebug) {
 
 const screen = new Screen(config);
 
-let mqttClient;
-
 if (config.mqttEnabled) {
   mqttClient = mqtt.connect({
     host: config.mqttHost,
@@ -66,7 +68,7 @@ if (config.mqttEnabled) {
 
   mqttClient.on("connect", () => {
     console.log("> mqttClient connected");
-    mqttClient.publish(`${config.mqttRootTopic}/message`, "online");
+    mqttClient.publish(`${config.mqttRootTopic}/status`, "online");
     mqttClient.publish(
       `${config.mqttRootTopic}/config`,
       JSON.stringify(config)
@@ -75,6 +77,33 @@ if (config.mqttEnabled) {
 
   mqttClient.on("error", () => {
     console.log("> mqttClient connecting error");
+  });
+
+  mqttClient.subscribe(`${config.mqttRootTopic}/#`);
+
+  mqttClient.on("message", (topic, payload) => {
+    const payloadText = utf8Decoder.write(payload);
+    if (config.appDebug) {
+      console.log(`> ${topic} says: `, payloadText);
+    }
+
+    switch (topic.split("/")[2]) {
+      case "setScreenConfig":
+        // ...
+        break;
+
+      case "setDot":
+        // ...
+        break;
+
+      case "setCanvasBin":
+        // ...
+        break;
+
+      case "clearCanvas":
+        // ...
+        break;
+    }
   });
 }
 
@@ -111,13 +140,13 @@ app.post("/dots", (req, res) => {
     // update dot on screen, push to mqtt and/or websocket
     if (config.mqttEnabled) {
       mqttClient.publish(
-        `${config.mqttRootTopic}/setDot`,
+        `${config.mqttRootTopic}/lastDot`,
         JSON.stringify(setDotResult)
       );
-      mqttClient.publish(`${config.mqttRootTopic}/setCanvasBin`, screen.bitmap);
+      mqttClient.publish(`${config.mqttRootTopic}/canvasBin`, screen.bitmap);
 
       mqttClient.publish(
-        `${config.mqttRootTopic}/setCanvasProcessed`,
+        `${config.mqttRootTopic}/canvasProcessed`,
         cookBitmap(
           screen.bitmap,
           8,

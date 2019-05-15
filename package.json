@@ -14,6 +14,7 @@
     "express": "4.16.4",
     "function-pipe": "1.2.3",
     "lodash": "^4.17.11",
-    "mqtt": "2.18.8"
+    "mqtt": "2.18.8",
+    "string_decoder": "1.2.0"
   }
 }
