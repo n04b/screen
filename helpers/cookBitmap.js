@@ -1,3 +1,4 @@
+const pipe = require("function-pipe");
 const { flattenArray, reorderArray } = require("./functions");
 
 module.exports = (
@@ -47,10 +48,20 @@ module.exports = (
     segments[segment].push(acc);
   }
 
+  /*
   let resultBitmap = segments;
   resultBitmap = reorderArray(resultBitmap, segmentOrder);
   resultBitmap = flattenArray(resultBitmap);
   resultBitmap = resultBitmap.join("");
+  */
+
+  const segmentsTransformsPipe = pipe(
+    item => reorderArray(item, segmentOrder),
+    flattenArray,
+    item => item.join("")
+  );
+
+  const resultBitmap = segmentsTransformsPipe(segments);
 
   return resultBitmap;
 };

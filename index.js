@@ -19,7 +19,7 @@ const defaultConfig = {
   postTimeout: 1000, // in ms
   mqttEnabled: true,
   mqttHost: "localhost",
-  mqttPort: 1883, // 1883 15933
+  mqttPort: 1883,
   mqttLogin: "",
   mqttPass: "",
   mqttRootTopic: "/screen"
@@ -114,10 +114,10 @@ app.post("/dots", (req, res) => {
         `${config.mqttRootTopic}/setDot`,
         JSON.stringify(setDotResult)
       );
-      mqttClient.publish(`${config.mqttRootTopic}/setBitmap`, screen.bitmap);
+      mqttClient.publish(`${config.mqttRootTopic}/setCanvasBin`, screen.bitmap);
 
       mqttClient.publish(
-        `${config.mqttRootTopic}/setBitmapAdapted`,
+        `${config.mqttRootTopic}/setCanvasString`,
         cookBitmap(
           screen.bitmap,
           8,
@@ -142,4 +142,5 @@ app.listen(config.appPort, function() {
   [v] post timeout
   [v] mqtt: https://www.npmjs.com/package/mqtt
   [ ] websocket
+  [ ] set screen config over MQTT
  */
