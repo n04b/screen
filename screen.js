@@ -2,16 +2,14 @@ const bitmapManipulation = require("bitmap-manipulation");
 
 module.exports = class Screen {
   constructor(config) {
-    this.config = config;
+    this._config = config;
     this._log = [];
     this._canvas = new bitmapManipulation.canvas.RGB(
-      this.config.screenWidth,
-      this.config.screenHeight,
+      this._config.screenWidth,
+      this._config.screenHeight,
       1
     );
     this._bitmap = new bitmapManipulation.Bitmap(this._canvas);
-
-    // this._bitmap.drawFilledRect(0, 0, 16, 16, [255, 255, 255], [(0, 0, 0)]);
   }
 
   get log() {
@@ -23,12 +21,11 @@ module.exports = class Screen {
   }
 
   getPixelColor(x, y) {
-    //???
     return this._bitmap.getPixel(x, y);
   }
 
   resetCanvas() {
-    //...
+    this._bitmap.clear([0, 0, 0]);
   }
 
   writeToLog(ip) {
@@ -41,7 +38,6 @@ module.exports = class Screen {
 
   setDots(dots) {
     return dots.map(dot => this.setDot(dot.x, dot.y, dot.color, dot.ip, true));
-    //return dots.map(dot => this.setDot(x, y, color, ip));
   }
 
   setDot(x, y, color, ip, noTimeout = false) {
@@ -52,7 +48,7 @@ module.exports = class Screen {
       this._bitmap.setPixel(x, y, this.parseColor(color));
       this.writeToLog(ip);
 
-      if (this.config.appDebug) {
+      if (this._config.appDebug) {
         console.log("> bitmap:", this._bitmap.data());
         console.log("> getPixel:", this.getPixelColor(x, y));
       }
@@ -68,9 +64,9 @@ module.exports = class Screen {
       !Number.isInteger(x) ||
       !Number.isInteger(y) ||
       x < 0 ||
-      x >= this.config.screenWidth || // max x value
+      x >= this._config.screenWidth || // max x value
       y < 0 ||
-      y >= this.config.screenHeight || // max y value
+      y >= this._config.screenHeight || // max y value
       !/^([A-Fa-f0-9]{6})$/.test(color)
     ) {
       return false;
@@ -80,7 +76,7 @@ module.exports = class Screen {
   }
 
   validateTimeout(ip) {
-    if (this.config.postTimeout === 0) {
+    if (this._config.postTimeout === 0) {
       return true;
     }
 
@@ -103,7 +99,7 @@ module.exports = class Screen {
 
     const delta = curretDate.getTime() - userEvents[0].date.getTime();
 
-    if (delta < this.config.postTimeout) {
+    if (delta < this._config.postTimeout) {
       return false;
     }
 

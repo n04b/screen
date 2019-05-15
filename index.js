@@ -117,7 +117,7 @@ app.post("/dots", (req, res) => {
       mqttClient.publish(`${config.mqttRootTopic}/setCanvasBin`, screen.bitmap);
 
       mqttClient.publish(
-        `${config.mqttRootTopic}/setCanvasString`,
+        `${config.mqttRootTopic}/setCanvasProcessed`,
         cookBitmap(
           screen.bitmap,
           8,
