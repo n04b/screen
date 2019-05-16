@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const { StringDecoder } = require("string_decoder");
 
 const Screen = require("./screen");
-const cookBitmap = require("./helpers/cookBitmap");
+const publishProcessedCanvas = require("./helpers/publishProcessedCanvas");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -16,7 +16,7 @@ const utf8Decoder = new StringDecoder("utf8");
 
 const defaultConfig = {
   appDebug: false,
-  appPort: 31337,
+  appPort: 1337,
   screenName: "screen",
   screenWidth: 800,
   screenHeight: 600,
@@ -26,7 +26,8 @@ const defaultConfig = {
   mqttPort: 1883,
   mqttLogin: "",
   mqttPass: "",
-  mqttRootTopic: "/screen"
+  mqttRootTopic: "/screen",
+  screenMqttTopic: "/targetScreen/setCanvas" // ?
 };
 
 const config = { ...defaultConfig, ...userConfig };
@@ -101,7 +102,9 @@ if (config.mqttEnabled) {
         break;
 
       case "clearCanvas":
-        // ...
+        screen.resetCanvas();
+        mqttClient.publish(`${config.mqttRootTopic}/canvasBin`, screen.bitmap);
+        publishProcessedCanvas(config, mqttClient, screen);
         break;
     }
   });
@@ -144,18 +147,7 @@ app.post("/dots", (req, res) => {
         JSON.stringify(setDotResult)
       );
       mqttClient.publish(`${config.mqttRootTopic}/canvasBin`, screen.bitmap);
-
-      mqttClient.publish(
-        `${config.mqttRootTopic}/canvasProcessed`,
-        cookBitmap(
-          screen.bitmap,
-          8,
-          3,
-          config.screenWidth,
-          config.screenHeight,
-          [2, 3, 0, 1]
-        )
-      );
+      publishProcessedCanvas(config, mqttClient, screen);
     }
   } else {
     res.status(400).send({ status: "error" });
@@ -172,4 +164,10 @@ app.listen(config.appPort, function() {
   [v] mqtt: https://www.npmjs.com/package/mqtt
   [ ] websocket
   [ ] set screen config over MQTT
+
+  QUESTIONS:
+  - как правильно организовать конфиг? разделить его или свалить
+    всё в кучу?
+  - вроде как передавать целый конфиг объект в функцию/экземпляр класса
+    не круто
  */
