@@ -1,13 +1,22 @@
 const cookBitmap = require("./cookBitmap");
 
-module.exports = (config, mqttClient, screen) => {
-  const {screenWidth, screenHeight, screenMqttTopic} = config;
-  const bytesPerPixel = 3;
-  const segmentSize = 8;
-  const segmentsOrder = [2, 3, 0, 1];  
+const targetScreenDefaultSettings = {
+  bytesPerPixel: 3,
+  segmentSize: 8,
+  segmentsOrder: [2, 3, 0, 1]
+};
+
+module.exports = (
+  config,
+  mqttClient,
+  screen,
+  targetScreenSettings = targetScreenDefaultSettings
+) => {
+  const { screenWidth, screenHeight, mqttRootTopic, screenMqttTopic } = config;
+  const { bytesPerPixel, segmentSize, segmentsOrder } = targetScreenSettings;
 
   mqttClient.publish(
-    `${config.mqttRootTopic}/canvasProcessed`,
+    `${mqttRootTopic}/canvasProcessed`,
     cookBitmap(
       screen.bitmap,
       segmentSize,
@@ -18,9 +27,9 @@ module.exports = (config, mqttClient, screen) => {
     )
   );
 
-  if(screenMqttTopic) {
+  if (screenMqttTopic) {
     mqttClient.publish(
-      `${config.mqttRootTopic}/canvasProcessed`,
+      screenMqttTopic,
       cookBitmap(
         screen.bitmap,
         segmentSize,
@@ -29,15 +38,15 @@ module.exports = (config, mqttClient, screen) => {
         screenHeight,
         segmentsOrder
       )
-    ); 
+    );
   }
-}
+};
 
 /*
   QUESTIONS:
   - стоит ли передавать инстанс в функцию? наверное нет)
   - и вообще как мне правильно абстрагировать это? выносить
     в отдельную функцию? 
-  - и (!) как это вообще вписать эту фичу в функционал
-    когда вроде как он не должен быть встроенным
+  - и (!) как это вообще вписать эту фичу в функционал,
+    когда, вроде как он не должен быть встроенным. хм...
  */

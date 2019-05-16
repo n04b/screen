@@ -163,11 +163,13 @@ app.listen(config.appPort, function() {
   [v] post timeout
   [v] mqtt: https://www.npmjs.com/package/mqtt
   [ ] websocket
-  [ ] set screen config over MQTT
+  [ ] set config over MQTT
+  [ ] set remote screen topic setup over MQTT
 
   QUESTIONS:
   - как правильно организовать конфиг? разделить его или свалить
     всё в кучу?
   - вроде как передавать целый конфиг объект в функцию/экземпляр класса
     не круто
+  - стоит ли добавлять прямую отправку MQTT на экран
  */
