@@ -1,37 +1,35 @@
 const cookBitmap = require("./cookBitmap");
 
-module.exports = (config, mqttClient, screen) => {
-  const {screenWidth, screenHeight, screenMqttTopic} = config;
-  const bytesPerPixel = 3;
-  const segmentSize = 8;
-  const segmentsOrder = [2, 3, 0, 1];  
+const targetScreenDefaultSettings = {
+  bytesPerPixel: 3,
+  segmentSize: 8,
+  segmentsOrder: [2, 3, 0, 1]
+};
 
-  mqttClient.publish(
-    `${config.mqttRootTopic}/canvasProcessed`,
-    cookBitmap(
-      screen.bitmap,
-      segmentSize,
-      bytesPerPixel,
-      screenWidth,
-      screenHeight,
-      segmentsOrder
-    )
+module.exports = (
+  config,
+  mqttClient,
+  screen,
+  targetScreenSettings = targetScreenDefaultSettings
+) => {
+  const { screenWidth, screenHeight, mqttRootTopic, screenMqttTopic } = config;
+  const { bytesPerPixel, segmentSize, segmentsOrder } = targetScreenSettings;
+
+  const cookedBitmap = cookBitmap(
+    screen.bitmap,
+    segmentSize,
+    bytesPerPixel,
+    screenWidth,
+    screenHeight,
+    segmentsOrder
   );
 
-  if(screenMqttTopic) {
-    mqttClient.publish(
-      `${config.mqttRootTopic}/canvasProcessed`,
-      cookBitmap(
-        screen.bitmap,
-        segmentSize,
-        bytesPerPixel,
-        screenWidth,
-        screenHeight,
-        segmentsOrder
-      )
-    ); 
+  mqttClient.publish(`${mqttRootTopic}/canvasProcessed`, cookedBitmap);
+
+  if (screenMqttTopic) {
+    mqttClient.publish(screenMqttTopic, cookedBitmap);
   }
-}
+};
 
 /*
   QUESTIONS:
@@ -40,4 +38,5 @@ module.exports = (config, mqttClient, screen) => {
     в отдельную функцию? 
   - и (!) как это вообще вписать эту фичу в функционал
     когда вроде как он не должен быть встроенным
+  - аргумент targetScreenSettings?
  */
