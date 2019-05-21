@@ -31,7 +31,7 @@ const defaultConfig = {
   mqttLogin: "",
   mqttPass: "",
   mqttRootTopic: "/screen",
-  screenMqttTopic: "/targetScreen/setCanvas" // ?
+  screenMqttTopic: undefined
 };
 
 const config = { ...defaultConfig, ...userConfig };
