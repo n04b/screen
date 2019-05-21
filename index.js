@@ -1,4 +1,4 @@
-const userConfig = require("./config.json");
+const fs = require("fs");
 const mqtt = require("mqtt");
 const express = require("express");
 const app = express();
@@ -7,6 +7,10 @@ const { StringDecoder } = require("string_decoder");
 
 const Screen = require("./screen");
 const publishProcessedCanvas = require("./helpers/publishProcessedCanvas");
+
+const userConfig = fs.existsSync("config.json")
+  ? JSON.parse(fs.readFileSync("config.json", "utf8"))
+  : {};
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));

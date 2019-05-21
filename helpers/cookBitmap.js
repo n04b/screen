@@ -48,13 +48,6 @@ module.exports = (
     segments[segment].push(acc);
   }
 
-  /*
-  let resultBitmap = segments;
-  resultBitmap = reorderArray(resultBitmap, segmentOrder);
-  resultBitmap = flattenArray(resultBitmap);
-  resultBitmap = resultBitmap.join("");
-  */
-
   const segmentsTransformsPipe = pipe(
     item => reorderArray(item, segmentOrder),
     flattenArray,

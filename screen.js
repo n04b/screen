@@ -37,7 +37,9 @@ module.exports = class Screen {
   }
 
   setDots(dots) {
-    return dots.map(dot => this.setDot(dot.x, dot.y, dot.color, dot.ip, true));
+    return dots.map(({ x, y, color, ip }) =>
+      this.setDot(x, y, color, ip, true)
+    );
   }
 
   setDot(x, y, color, ip, noTimeout = false) {
