@@ -1,3 +1,4 @@
+const fs = require("fs");
 const bitmapManipulation = require("bitmap-manipulation");
 
 module.exports = class Screen {
@@ -20,6 +21,32 @@ module.exports = class Screen {
     return this._bitmap.data();
   }
 
+  saveState() {
+    const { screenName } = this._config;
+    const fileName = `state_${screenName}`;
+    // const content = Buffer.from(this._bitmap.data(), "binary").toString("base64");
+    const content = this._bitmap.data();
+
+    fs.writeFile(fileName, content, err => {
+      if (err) {
+        console.log("> state savinf error: ", err);
+      }
+      console.log(`> state saved to file ${fileName}`);
+    });
+  }
+
+  loadState() {
+    const { screenName } = this._config;
+    const fileName = `state_${screenName}`;
+
+    fs.readFile(fileName, (error, content) => {
+      console.log("# state loaded from file: ", buf);
+
+      // hmm, hacky
+      this._bitmap._canvas._data = content;
+    });
+  }
+
   getPixelColor(x, y) {
     return this._bitmap.getPixel(x, y);
   }
@@ -37,6 +64,10 @@ module.exports = class Screen {
   }
 
   setDots(dots) {
+    if (dots.length > this._config.dotsPerRequest) {
+      return null;
+    }
+
     return dots.map(({ x, y, color, ip }) =>
       this.setDot(x, y, color, ip, true)
     );
@@ -78,7 +109,7 @@ module.exports = class Screen {
   }
 
   validateTimeout(ip) {
-    if (this._config.postTimeout === 0) {
+    if (this._config.requestTimeout === 0) {
       return true;
     }
 
@@ -101,7 +132,7 @@ module.exports = class Screen {
 
     const delta = curretDate.getTime() - userEvents[0].date.getTime();
 
-    if (delta < this._config.postTimeout) {
+    if (delta < this._config.requestTimeout) {
       return false;
     }
 

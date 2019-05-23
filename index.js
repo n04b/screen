@@ -8,6 +8,7 @@ const { StringDecoder } = require("string_decoder");
 const Screen = require("./screen");
 const publishProcessedCanvas = require("./helpers/publishProcessedCanvas");
 
+const defaultConfig = require("./defaultConfig");
 const userConfig = fs.existsSync("config.json")
   ? JSON.parse(fs.readFileSync("config.json", "utf8"))
   : {};
@@ -18,25 +19,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 let mqttClient;
 const utf8Decoder = new StringDecoder("utf8");
 
-const defaultConfig = {
-  appDebug: false,
-  appPort: 1337,
-  screenName: "screen",
-  screenWidth: 800,
-  screenHeight: 600,
-  postTimeout: 1000, // in ms
-  mqttEnabled: true,
-  mqttHost: "localhost",
-  mqttPort: 1883,
-  mqttLogin: "",
-  mqttPass: "",
-  mqttRootTopic: "/screen",
-  screenMqttTopic: undefined
-};
-
 const config = { ...defaultConfig, ...userConfig };
 
-process.argv.forEach((item, index, array) => {
+process.argv.forEach(item => {
   if (/^[^=]*=[^=]*$/.test(item)) {
     const [property, value] = item.split("=");
 
@@ -57,6 +42,35 @@ process.argv.forEach((item, index, array) => {
   }
 });
 
+/*
+const argsConfig = process.argv.reduce((acc, item) => {
+  if (/^[^=]*=[^=]*$/.test(item)) {
+    const [property, value] = item.split("=");
+
+    switch (property) {
+      case "width":
+        acc.screenWidth = parseInt(value);
+        break;
+
+      case "height":
+        acc.screenHeight = parseInt(value);
+        break;
+
+      default:
+        acc[property] =
+          typeof defaultConfig[property] === "number" ? parseInt(value) : value;
+        break;
+    }
+  }
+  return acc;
+}, {});
+
+const config = { ...defaultConfig, ...userConfig, ...argsConfig };
+*/
+
+const apiPrefix = config.isMultiple ? `/${config.screenName}` : "";
+const mqttRootTopic = `/${config.screenName}`;
+
 if (config.appDebug) {
   console.log("> config:", config);
 }
@@ -73,18 +87,15 @@ if (config.mqttEnabled) {
 
   mqttClient.on("connect", () => {
     console.log("> mqttClient connected");
-    mqttClient.publish(`${config.mqttRootTopic}/status`, "online");
-    mqttClient.publish(
-      `${config.mqttRootTopic}/config`,
-      JSON.stringify(config)
-    );
+    mqttClient.publish(`${mqttRootTopic}/status`, "online");
+    mqttClient.publish(`${mqttRootTopic}/config`, JSON.stringify(config));
   });
 
   mqttClient.on("error", () => {
     console.log("> mqttClient connecting error");
   });
 
-  mqttClient.subscribe(`${config.mqttRootTopic}/#`);
+  mqttClient.subscribe(`${mqttRootTopic}/#`);
 
   mqttClient.on("message", (topic, payload) => {
     const payloadText = utf8Decoder.write(payload);
@@ -94,27 +105,37 @@ if (config.mqttEnabled) {
 
     switch (topic.split("/")[2]) {
       case "setScreenConfig":
-        // ...
+        //...
         break;
 
       case "setDot":
-        // ...
+        //...
         break;
 
       case "setCanvasBin":
-        // ...
+        //...
+        break;
+
+      case "saveState":
+        screen.saveState();
+        break;
+
+      case "loadState":
+        screen.loadState();
+        mqttClient.publish(`${mqttRootTopic}/canvasBin`, screen.bitmap);
+        publishProcessedCanvas(config, mqttClient, screen);
         break;
 
       case "clearCanvas":
         screen.resetCanvas();
-        mqttClient.publish(`${config.mqttRootTopic}/canvasBin`, screen.bitmap);
+        mqttClient.publish(`${mqttRootTopic}/canvasBin`, screen.bitmap);
         publishProcessedCanvas(config, mqttClient, screen);
         break;
     }
   });
 }
 
-app.get("/", (req, res) => {
+app.get(`${apiPrefix}/`, (req, res) => {
   res.send({
     config,
     canvas: screen.bitmap.toString("base64"),
@@ -122,15 +143,15 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/bin/dots", (req, res) => {
+app.get(`${apiPrefix}/bin/dots`, (req, res) => {
   res.send(screen.bitmap);
 });
 
-app.get("/log", (req, res) => {
+app.get(`${apiPrefix}/log`, (req, res) => {
   res.send(screen.log);
 });
 
-app.post("/dots", (req, res) => {
+app.post(`${apiPrefix}/dots`, (req, res) => {
   const { x, y, color } = req.body;
   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
 
@@ -147,10 +168,10 @@ app.post("/dots", (req, res) => {
     // update dot on screen, push to mqtt and/or websocket
     if (config.mqttEnabled) {
       mqttClient.publish(
-        `${config.mqttRootTopic}/lastDot`,
+        `${mqttRootTopic}/lastDot`,
         JSON.stringify(setDotResult)
       );
-      mqttClient.publish(`${config.mqttRootTopic}/canvasBin`, screen.bitmap);
+      mqttClient.publish(`${mqttRootTopic}/canvasBin`, screen.bitmap);
       publishProcessedCanvas(config, mqttClient, screen);
     }
   } else {
@@ -168,7 +189,9 @@ app.listen(config.appPort, function() {
   [v] mqtt: https://www.npmjs.com/package/mqtt
   [ ] websocket
   [ ] set screen config over MQTT
-
+  [ ] multiple screens
+  [v] save and load state from file
+  
   QUESTIONS:
   - как правильно организовать конфиг? разделить его или свалить
     всё в кучу?
